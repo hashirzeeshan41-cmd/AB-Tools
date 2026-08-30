@@ -1,0 +1,143 @@
+// Prisma schema for AB-Tools - phase 1 foundation
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  name          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  files         File[]
+  subscriptions Subscription[]
+}
+
+model Account {
+  id               String  @id @default(cuid())
+  userId           String
+  provider         String
+  providerAccountId String
+  access_token     String?
+  refresh_token    String?
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  expires   DateTime
+  sessionToken String @unique
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model File {
+  id          String   @id @default(cuid())
+  ownerId     String?
+  filename    String
+  mimeType    String
+  size        Int
+  storageKey  String   @unique
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime?
+  processed   Boolean  @default(false)
+
+  owner User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  jobs  ProcessingJob[]
+}
+
+model ProcessingJob {
+  id          String   @id @default(cuid())
+  fileId      String
+  tool        String
+  status      String   @default("pending")
+  resultKey   String?
+  resultSize  Int?
+  error       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  file File @relation(fields: [fileId], references: [id], onDelete: Cascade)
+}
+
+model Tool {
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
+  description String?
+  category String
+  isPremium Boolean @default(false)
+}
+
+model ToolUsage {
+  id String @id @default(cuid())
+  userId String?
+  toolId String
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+}
+
+model Favorite {
+  id String @id @default(cuid())
+  userId String
+  toolId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+}
+
+model Download {
+  id String @id @default(cuid())
+  userId String?
+  fileId String
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  file File @relation(fields: [fileId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id String @id @default(cuid())
+  userId String
+  provider String
+  providerSubscriptionId String
+  status String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ApiKey {
+  id String @id @default(cuid())
+  userId String?
+  key String @unique
+  description String?
+  revoked Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model AuditLog {
+  id String @id @default(cuid())
+  userId String?
+  action String
+  meta Json?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
